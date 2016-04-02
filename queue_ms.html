@@ -1,0 +1,265 @@
+
+<!-- |\/| |\/| |\/| |\/| |\/| |\/| |\/| |\/| |\/| |\/| |\/| |\/| |\/| |\/| |\/|
+
+    JavaScript/HTML5 multi server queue simulation
+
+    HTML document (web page) that simulates and displays a multi server
+      queueing theory example based on Erlang C model
+
+    @author ohseejay / https://github.com/ohseejay / https://bitbucket.org/ohseejay
+    @author rhampshi / https://github.com/rhampshi
+
+    Chad Jenkins
+    Laboratory for Perception RObotics and Grounded REasoning Systems
+    University of Michigan
+
+    Robert Hampshire
+    University of Michigan
+
+    License: Creative Commons 3.0 BY-SA
+
+|\/| |\/| |\/| |\/| |\/| |\/| |\/| |\/| |\/| |\/| |\/| |\/| |\/| |\/| |\/| -->
+
+<html>  <!-- html tag marking the start of the HTML document -->
+
+<!-- 
+
+    this is a comment in HTML.  text within comment markers is ignored.
+
+    this HTML document (web page) displays an animation of a falling circle  
+
+    this document is comprised of three HTML elements inside html and body tags:
+      "text_output" for text
+      "draw_canvas" for drawing
+      an unnamed script element containing JavaScript code to be executed
+
+    if you run into problems, do not forget to open the browser console.
+
+-->
+
+<!-- body tag marking the start of the body of the document.
+       once the document is loaded, the initialization function will be called
+-->
+<body onload=init()>  
+
+<!-- div HTML element named "text_output" used for displaying text -->
+<div id="text_output">going to put some text here</div>
+
+<!-- canvas HTML element named "draw_canvas" used for drawing the animation 
+       note: the origin of the canvas in the top left corner
+-->
+<canvas id="draw_canvas" width=1000 height="400"></canvas>
+
+
+<!-- script element contains JavaScript code to update page for animation -->
+<script>
+
+// this is a comment in JavaScript.  text on this line is ignored
+
+/*
+    this is also a comment in JavaScript.
+    text between the comment delimiters is ignored
+*/
+
+
+// definition of the initialization function to set the initial animation state
+function init() {
+
+    // initialize simulation variables for queueing model
+    t = 0;
+    t_T = 100;
+    dt = 0.002;
+    lam = 4;
+    mu = 0.5;
+    C = 10;
+    
+    // initialize queue record
+    q = []; 
+    q[0] = { time: 0, num : 5 };
+
+    // get a reference to the canvas element "draw_canvas" in the document.
+    //   this reference will be used to get the dimensions of the canvas
+    //   note: document is a global object for current document in browser
+    var canvas = document.getElementById("draw_canvas");
+
+    // update the size of the canvas based on dimensions of browser windows
+    //   note: window is a global object for the browser window
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight-50;
+
+    // function call to start the animation loop 
+    animate();  
+}
+
+// definition of the animation function containing the animation loop.
+//   this function repeatedly called to update the animation and draw results
+function animate() {     
+
+    // the requestAnimationFrame function requests that the animate function
+    //   be called again in the near future
+    requestAnimationFrame(animate);
+
+    // function call to update the state of the animation
+    update();
+
+    // function call to draw the current state of the animation
+    draw(); 
+}
+
+// definition of the update function to advance animation state forward in time
+function update() {
+    
+   // function call to update simulation
+   mmc();
+}
+
+// simulation update of Erlang C queueing model
+function mmc() {
+
+    // ocj : random test
+    // q[q.length] = { time : q[q.length-1].time+dt, num : q[q.length-1].num + Math.round((Math.random()-0.5)*2) };
+
+   queue_length = q[q.length-1].num;
+   queue_time = q[q.length-1].time;
+   t = q[q.length-1].time;
+
+   if (t > t_T) return;
+   
+   rate = lam + mu * Math.min(C, queue_length);
+
+   U = Math.random();
+
+   t = t - (1/rate)  * Math.log(U);
+
+   if (U <= (lam/rate)) {
+       q[q.length] = {
+           time : t,
+           num : q[q.length-1].num + 1  
+       }
+   }
+   else {
+       //console.log("else "q[q.length-1].num);
+       if (!(q[q.length-1].num < 1)) {
+           console.log("departure");
+           q[q.length] = {
+               time : t,
+               num : q[q.length-1].num - 1  
+           }
+       }
+   }
+
+}
+
+// definition of the draw function to render current animation state
+function draw() {
+
+    // get a reference to the canvas element "text_output" in the document
+    var canvas = document.getElementById("text_output");
+
+    // get a reference to the canvas element "draw_canvas" in the document
+    var canvas = document.getElementById("draw_canvas");
+
+    // get a reference to a 2D drawing context for the "draw_canvas" canvas
+    ctx = canvas.getContext("2d");
+    
+    // clear drawing canvas
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    // get current state of the simulation from last event
+    queue_length = q[q.length-1].num;
+    queue_time = q[q.length-1].time;
+    server_length = C;
+    buffer_length = queue_length - server_length;
+
+    // insert a string into the "text_output" element describing 
+    //   the current state of the simulation
+    document.getElementById("text_output").innerHTML = "t = " + queue_time.toFixed(3) + " Q = " + queue_length + " C = " + server_length;
+
+    // draw elements as a maize circle with a blue border of width 10
+    ctx.fillStyle = "#ffc90b";
+    ctx.strokeStyle = "#00234c";
+    ctx.lineWidth = 10;
+
+    // draw servers and fill based on whether server is occupied
+    for (i=0;i<server_length;i++) {
+        // draw the point as a maize circle with a blue border
+        ctx.beginPath();
+        ctx.arc(540,100+i*40,10,0,2*Math.PI);
+        ctx.closePath();
+        ctx.stroke();
+        if (i < queue_length)
+           ctx.fillStyle = "#ffc90b";
+        else
+           ctx.fillStyle = "#888888";
+        ctx.fill();
+    }
+
+    // draw elements as a blue circle with a maize border of width 10
+    ctx.fillStyle = "#00234c";
+    ctx.strokeStyle = "#ffc90b";
+
+    // draw queue buffer that overflows past server bandwidth
+    center_line = 100+((server_length-1)*40/2);
+    for (i=0;i<buffer_length;i++) {
+        ctx.beginPath();
+        ctx.arc(500-i*40,center_line,10,0,2*Math.PI);
+        ctx.closePath();
+        ctx.stroke();
+        ctx.fill();
+    }
+
+    // draw blue line with extents indicating buffer length
+    ctx.strokeStyle = "#00234c";
+    ctx.lineWidth = 3;
+    if (buffer_length >0) {
+    ctx.beginPath();
+    ctx.moveTo(500,center_line-40);
+    ctx.lineTo(500-(buffer_length-1)*40,center_line-40);
+    ctx.closePath();
+    ctx.stroke();
+
+    ctx.beginPath();
+    ctx.moveTo(500,center_line-30);
+    ctx.lineTo(500,center_line-50);
+    ctx.closePath();
+    ctx.stroke();
+
+    ctx.beginPath();
+    ctx.moveTo(500-(buffer_length-1)*40,center_line-30);
+    ctx.lineTo(500-(buffer_length-1)*40,center_line-50);
+    ctx.closePath();
+    ctx.stroke();
+    }
+
+    // drawn text
+    /*
+    ctx.fillStyle = "#000000";
+    ctx.font = "20px courier";
+    ctx.fillText("Q(" + t.toFixed(3) + ") = " + queue_length, 500-(queue_length-1)*40, center_line-70);
+    */
+
+    // draw arrow indicating departing elements that have been served
+    ctx.fillStyle = "#ffc90b";
+    ctx.strokeStyle = "#00234c";
+    ctx.beginPath();
+    ctx.moveTo(570,center_line);
+    ctx.lineTo(670,center_line);
+    ctx.moveTo(670-20,center_line-20);
+    ctx.lineTo(670,center_line);
+    ctx.moveTo(670-20,center_line+20);
+    ctx.lineTo(670,center_line);
+    ctx.closePath();
+    ctx.stroke();
+
+    // ack the Laboratory for Progress
+    ctx.fillStyle = "#000000";
+    ctx.font = "20px courier";
+    ctx.fillText("M4Progress",0,canvas.height-50);
+    ctx.fillRect(0,canvas.height-50,canvas.width,50);
+
+}
+
+</script>
+
+</body>
+</html>
